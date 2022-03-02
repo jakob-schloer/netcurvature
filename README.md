@@ -10,7 +10,7 @@ An intuition on network curvature:
 
 ### 1. Clone repository with submodules:
 ```
-git clone --recurse-submodules https://github.com/mlcs/climnet.git
+git clone --recurse-submodules https://github.com/jakob-schloer/netcurvature.git
 ```
 
 ### 2. Installing packages
