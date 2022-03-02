@@ -1,0 +1,3 @@
+[submodule "submodules/climnet"]
+	path = submodules/climnet
+	url = https://github.com/mlcs/climnet.git

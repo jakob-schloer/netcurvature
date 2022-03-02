@@ -1,0 +1,17 @@
+# Files to ignore by git
+*.pyc
+*.sh
+*.npy
+
+# Paths to ignore
+.ipynb_checkpoints/
+.mypy_chache/
+.vscode/
+.pytest_cache/
+__pycache__
+
+#/data/
+#/outputs/
+data/2m_temperature_monthly_1979_2020.nc
+data/t2m_fekete_grid_2.5_1950-2020.nc
+
