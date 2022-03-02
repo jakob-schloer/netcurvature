@@ -1,4 +1,4 @@
-# Teleconnection patterns of different El Ni ̃no types1revealed by climate network curvature
+# Teleconnection patterns of different El Nino types revealed by climate network curvature
 Ricci-curvature applied to climate networks to study teleconnection patterns of ENSO diversity.
 
 An intuition on network curvature:
