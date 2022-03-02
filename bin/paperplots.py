@@ -20,7 +20,7 @@ PATH = os.path.dirname(os.path.abspath(__file__))
 def make_argparser():
     """Set parameters for function"""
     parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--dataset", default=None, type=str,
+    parser.add_argument("-data", "--dataset", default=None, type=str,
                         help=("Path to t2m dataset file regridded on equidistant grid."))
     parser.add_argument("-ep", "--epNetwork", default=None, type=str,
                         help=("Filepath of EP network .graphml."))

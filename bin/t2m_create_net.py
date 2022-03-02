@@ -38,7 +38,7 @@ if False:
         """Workaround of argsparser."""
 
         def __init__(self) -> None:
-            self.data = PATH + "/../data/2m_temperature_monthly_1979_2020.nc"  
+            self.dataset = PATH + "/../data/2m_temperature_monthly_1979_2020.nc"  
             self.season = 'Nino_CP'
             self.lb = False
             self.curvature = 'forman'
@@ -48,7 +48,7 @@ else:
     args = parser.parse_args()
 
 # Set paths
-dataset_nc = args.data
+dataset_nc = args.dataset
 output_dir = PATH + f"/../outputs/t2m_net/"
 plot_dir = output_dir + "/plots/"
 
@@ -57,9 +57,12 @@ if not os.path.isdir(output_dir):
 
 # Regridding of data to equidistant grid
 print('Create Dataset')
-ds = AnomalyDataset(data_nc=dataset_nc, var_name='t2m', grid_step=2.5,
-                    grid_type='fekete', detrend=True, climatology='dayofyear')
-ds.save(dataset_nc + "_fekete")
+if os.path.exists(dataset_nc + "_fekete"):
+    ds = AnomalyDataset(load_nc=dataset_nc + "_fekete", detrend=False)
+else:
+    ds = AnomalyDataset(data_nc=dataset_nc, var_name='t2m', grid_step=2.5,
+                        grid_type='fekete', detrend=True, climatology='dayofyear')
+    ds.save(dataset_nc + "_fekete")
 
 # %%
 # Select time periods based on the nino indices 
