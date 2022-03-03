@@ -36,7 +36,7 @@ def make_argparser():
 
 
 # True to run with ipython
-if True:
+if False:
     class Args():
         """Workaround of argsparser."""
 
@@ -805,3 +805,4 @@ for j, nino in enumerate(nino_networks):
 cplt.enumerate_subplots(np.array(axs).reshape(
     len(net_measures), 4).T, pos_x=-0.1, pos_y=1.08)
 # %%
+plt.show()
