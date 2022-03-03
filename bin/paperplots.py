@@ -1,5 +1,8 @@
-"""New paperplots suggested by Bedartha at 6. Nov."""
+"""
+Reproducing figures of the paper.
+"""
 # %%
+import copy
 import os
 import argparse
 import numpy as np
@@ -9,13 +12,14 @@ import matplotlib.gridspec as gridspec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import seaborn as sn
 import cartopy.crs as ccrs
-
+from importlib import reload
 from climnet.dataset import AnomalyDataset
-from climnet.network import clim_networkx 
+from climnet.network import clim_networkx
 import climnet.plots as cplt
 import climnet.utils.spatial_utils as sputils
-
+import utils as ut
 PATH = os.path.dirname(os.path.abspath(__file__))
+
 
 def make_argparser():
     """Set parameters for function"""
@@ -30,40 +34,58 @@ def make_argparser():
                         help=("Filepath of normal network .graphml."))
     return parser
 
+
 # True to run with ipython
-if False:
+if True:
     class Args():
         """Workaround of argsparser."""
+
         def __init__(self) -> None:
             self.dataset = PATH + "/../data/t2m_fekete_grid_2.5_1950-2020.nc"
-            self.epNetwork = PATH + '/../outputs/t2m_1950-2020_nino_nets/t2m_Nino_EP_fekete_2.5_spearman_twosided_de_0.02_weighted_lb_2_nx.graphml'
-            self.cpNetwork = PATH + '/../outputs/t2m_1950-2020_nino_nets/t2m_Nino_CP_fekete_2.5_spearman_twosided_de_0.02_weighted_lb_2_nx.graphml'
-            self.normalNetwork = PATH + '/../outputs/t2m_1950-2020_nino_nets/t2m_standard_fekete_2.5_spearman_twosided_de_0.02_weighted_lb_2_nx.graphml'
+            self.epNetwork = PATH + \
+                '/../outputs/t2m_1950-2020_nino_nets/t2m_Nino_EP_fekete_2.5_spearman_twosided_de_0.02_weighted_lb_2_nx.graphml'
+            self.cpNetwork = PATH + \
+                '/../outputs/t2m_1950-2020_nino_nets/t2m_Nino_CP_fekete_2.5_spearman_twosided_de_0.02_weighted_lb_2_nx.graphml'
+            self.normalNetwork = PATH + \
+                '/../outputs/t2m_1950-2020_nino_nets/t2m_standard_fekete_2.5_spearman_twosided_de_0.02_weighted_lb_2_nx.graphml'
     args = Args()
 else:
     parser = make_argparser()
     args = parser.parse_args()
-
 # %%
 # Load dataset corresponding to the networks
 ds = AnomalyDataset(load_nc=args.dataset)
-
-# Load EP, CP, standard network 
+# %%
+# Load Enso Index
+fname = PATH + "/../data/ersst5.nino.mth.91-20.ascii"
+nino_indices = ut.get_nino_indices(
+    fname, time_range=[ds.ds.time[0].data, ds.ds.time[-1].data], time_roll=0)
+enso_dict = ut.get_enso_years(nino_indices, month_range=[12, 2],
+                              mean=True, threshold=0.5,
+                              min_diff=0.1,
+                              drop_volcano_year=False)
+# %%
+# Load EP, CP, standard network
 nino_networks = [
     {'name': 'Nino_EP',
      'file': args.epNetwork},
-     {'name': 'Nino_CP',
+    {'name': 'Nino_CP',
      'file': args.cpNetwork},
     {'name': 'standard',
      'file': args.normalNetwork},
 ]
-
 for net in nino_networks:
     # naming of net files
     season_type = net['name']
-    net['cnx'] = clim_networkx.Clim_NetworkX(dataset=ds,
-                                nx_path_file=net['file']
-                                )
+
+    time_period = enso_dict[season_type]
+    ds_tmp = copy.deepcopy(ds)
+    ds_tmp.use_time_snippets(time_period)
+
+    # Load networks
+    net['cnx'] = clim_networkx.Clim_NetworkX(dataset=ds_tmp,
+                                             nx_path_file=net['file']
+                                             )
     # Normalize curvature
     net['cnx'].normalize_edge_attr(attributes=['formanCurvature'])
 
@@ -79,7 +101,8 @@ for net in nino_networks:
     ll = {}
     for q in [None]+q_vals:
         print(f'Compute link length q={q}')
-        link_length = net['cnx'].get_link_length_distribution(q=q, var='formanCurvature')
+        link_length = net['cnx'].get_link_length_distribution(
+            q=q, var='formanCurvature')
         ll[q] = link_length
     net['ll'] = ll
 
@@ -207,18 +230,18 @@ cplt.enumerate_subplots(axes.T, pos_x=-0.1, pos_y=1.07)
 m_name = 'norm'
 net_measures = {
     'standard': [dict(var='formanCurvature_norm_q0.9',
-                     vmin=.5,
-                     vmax=.6,
-                     vmin_zonal=.42,
-                     vmax_zonal=.55,
-                     cmap='Reds', label=r"$F_i > Q_F(0.9)$"),
-                dict(var='formanCurvature_norm_q0.1',
-                     vmin=-.25,
-                     vmax=-.07,
-                     vmin_zonal=None,
-                     vmax_zonal=.0,
-                     cmap='Blues_r', label=r"$F_i < Q_F(0.1)$"),
-                ],
+                      vmin=.5,
+                      vmax=.6,
+                      vmin_zonal=.42,
+                      vmax_zonal=.55,
+                      cmap='Reds', label=r"$F_i > Q_F(0.9)$"),
+                 dict(var='formanCurvature_norm_q0.1',
+                      vmin=-.25,
+                      vmax=-.07,
+                      vmin_zonal=None,
+                      vmax_zonal=.0,
+                      cmap='Blues_r', label=r"$F_i < Q_F(0.1)$"),
+                 ],
     'Nino_EP': [dict(var='formanCurvature_norm_q0.9',
                      vmin=.23,
                      vmax=.37,
@@ -250,7 +273,7 @@ net_measures = {
 
 fig = plt.figure(figsize=(len(net_measures)*7, 15))
 gs = gridspec.GridSpec(3, len(net_measures),
-                        height_ratios=[3,3,4],
+                       height_ratios=[3, 3, 4],
                        hspace=0.3, wspace=0.3)
 axs = []
 clrs = ['darkred', 'darkblue']
@@ -356,7 +379,8 @@ for j, nino in enumerate(nino_networks):
                                 r'$30^\circ$N', r'$60^\circ$N'])
     axs.append(axlat1)
 
-cplt.enumerate_subplots(np.array(axs).reshape(len(net_measures), 3).T, pos_x=-0.1, pos_y=1.08)
+cplt.enumerate_subplots(np.array(axs).reshape(
+    len(net_measures), 3).T, pos_x=-0.1, pos_y=1.08)
 
 # %%
 ##########################################################################################
@@ -463,6 +487,95 @@ cplt.enumerate_subplots(np.array(axs), fontsize=24)
 plt.tight_layout()
 
 # %%
+##########################################################################################
+# Figure 5
+# Linear Regression Coefficient analysis
+##########################################################################################
+
+reload(cplt)
+reload(ut)
+
+attribute = f'formanCurvature'
+locations = [
+    # dict(name='Eastern Pacific', lon=[-145, -80], lat=[-10, 10],
+    #      central_lon=180, link_step=7, vmax=1E2),
+    # dict(name='Central Pacific', lon=[160, -145], lat=[-10, 10],
+    #      central_lon=180, link_step=1, vmax=1E2),
+    dict(name=rf'$Ni\~no$ 3', lon=[-150, -90], lat=[-5, 5],
+         central_lon=180, link_step=4, vmax=1E2),
+    dict(name=rf'$Ni\~no$ 4', lon=[160, -150], lat=[-5, 5],
+         central_lon=180, link_step=1, vmax=1E2),
+    dict(name='Indian Ocean', lon=[60, 100], lat=[-20, 10],
+         central_lon=100, link_step=5, vmax=1E2),
+    # dict(name='PO', lon=[-170, -120], lat=[40, 70],
+    #      central_lon=180, link_step=3, vmax=1E2),
+    dict(name='Labrador Sea', lon=[-100, -40], lat=[50, 80],
+         central_lon=-40, link_step=2, vmax=1E2),
+    # dict(name='Northern Atlantic', lon=[-10, 40], lat=[50, 70],
+    #      central_lon=0, link_step=3, vmax=1E2),
+]
+
+method = 'rank'
+nrows = 4
+ncols = 2
+im = cplt.create_multi_map_plot_gs(nrows=nrows, ncols=ncols,
+                                   central_longitude=180,
+                                   figsize=(9, 6),
+                                   orientation='horizontal',
+                                   )
+
+lr_range = .4
+# for i, loc in enumerate(locations):
+for i, loc in enumerate(locations):
+    for j, nino in enumerate([nino_networks[0],
+                              nino_networks[1]]):
+        link_dict = nino['cnx'].get_edges_nodes_for_region(
+            lon_range=loc['lon'], lat_range=loc['lat'],
+        )
+        var = 'anomalies'
+        sids = link_dict['sids'][:]
+
+        da_lr = ut.get_LR_map(ds=nino['cnx'].ds,
+                              var=var,
+                              sids=sids,
+                              method=method)
+        im_comp = cplt.plot_map(ds,
+                                da_lr.mean(dim='sids'),
+                                ax=im['ax'][i*ncols + j],
+                                plot_type='contourf',
+                                cmap='RdBu_r',
+                                title=f'{loc["name"]} ({nino["name"]})',
+                                projection='EqualEarth',
+                                plt_grid=True,
+                                significant_mask=False,
+                                levels=14,
+                                tick_step=2,
+                                round_dec=2,
+                                vmin=-lr_range,
+                                vmax=lr_range,
+                                bar=False,
+                                )
+
+        cplt.plot_rectangle(ax=im['ax'][i*ncols + j],
+                            lon_range=loc['lon'],
+                            lat_range=loc['lat'],
+                            color='k',
+                            lw=4)
+
+label = f'{method}-normalized Linear Regression coefficient'
+cbar = cplt.make_colorbar_discrete(ax=im['ax'][-1],
+                                   im=im_comp['im'],
+                                   set_cax=False,
+                                   orientation='horizontal',
+                                   vmin=-lr_range,
+                                   vmax=lr_range,
+                                   label=label,
+                                   extend='both',
+                                   round_dec=2,
+                                   )
+
+
+# %%
 #######################################################
 # Figures for Supporting Information
 #######################################################
@@ -522,18 +635,18 @@ vmax_neg = -0.01
 m_name = 'norm'
 net_measures = {
     'standard': [dict(var='formanCurvature_norm_q0.9',
-                     vmin=vmin_pos,
-                     vmax=vmax_pos,
-                     vmin_zonal=vmin_pos,
-                     vmax_zonal=vmax_pos,
-                     cmap='Reds', label=r"$F(v)$ | q>0.9"),
-                dict(var='formanCurvature_norm_q0.1',
-                     vmin=vmin_neg,
-                     vmax=vmax_neg,
-                     vmin_zonal=vmin_neg,
-                     vmax_zonal=vmax_neg,
-                     cmap='Blues_r', label=r"$F(v)$ | q<0.1"),
-                ],
+                      vmin=vmin_pos,
+                      vmax=vmax_pos,
+                      vmin_zonal=vmin_pos,
+                      vmax_zonal=vmax_pos,
+                      cmap='Reds', label=r"$F(v)$ | q>0.9"),
+                 dict(var='formanCurvature_norm_q0.1',
+                      vmin=vmin_neg,
+                      vmax=vmax_neg,
+                      vmin_zonal=vmin_neg,
+                      vmax_zonal=vmax_neg,
+                      cmap='Blues_r', label=r"$F(v)$ | q<0.1"),
+                 ],
     'Nino_EP': [dict(var='formanCurvature_norm_q0.9',
                      vmin=vmin_pos,
                      vmax=vmax_pos,
@@ -565,7 +678,7 @@ net_measures = {
 
 fig = plt.figure(figsize=(len(net_measures)*7, 20))
 gs = gridspec.GridSpec(4, len(net_measures),
-                        height_ratios=[3,3,3,3],
+                       height_ratios=[3, 3, 3, 3],
                        hspace=0.35, wspace=0.3)
 axs = []
 clrs = ['darkred', 'darkblue']
@@ -673,21 +786,22 @@ for j, nino in enumerate(nino_networks):
                                 r'$30^\circ$N', r'$60^\circ$N'])
     axs.append(axlat1)
 
-
     # histograms
     axhist = fig.add_subplot(gs[3, j])
-    sn.histplot(nino['cnx'].ds_nx['formanCurvature_norm'], ax=axhist,stat='density')
+    sn.histplot(nino['cnx'].ds_nx['formanCurvature_norm'],
+                ax=axhist, stat='density')
     # add percentile borders
     axhist.vlines(
         [np.min(nino['cnx'].ds_nx['formanCurvature_norm_q0.9']),
          np.max(nino['cnx'].ds_nx['formanCurvature_norm_q0.1'])],
         ymin=0, ymax=7, color='k'
     )
-    axhist.set_xlim([-1,1])
-    axhist.set_ylim([0,7])
+    axhist.set_xlim([-1, 1])
+    axhist.set_ylim([0, 7])
     axhist.set_xlabel(r'$F(v)$')
 
     axs.append(axhist)
-    
-cplt.enumerate_subplots(np.array(axs).reshape(len(net_measures), 4).T, pos_x=-0.1, pos_y=1.08)
+
+cplt.enumerate_subplots(np.array(axs).reshape(
+    len(net_measures), 4).T, pos_x=-0.1, pos_y=1.08)
 # %%

@@ -1,3 +1,4 @@
+import scipy.stats as st
 import numpy as np
 import pandas as pd
 from pandas.core import base
@@ -456,3 +457,64 @@ def get_enso_flavors_consensus(fname, time_range=None):
     ], dtype='datetime64[D]').T
 
     return enso_years
+
+
+def normalize(data):
+    norm = (data - np.nanmin(data)) / (np.nanmax(data) - np.nanmin(data))
+
+    return norm
+
+
+def standardize(dataset, axis=0):
+    return (dataset - np.nanmean(dataset, axis=axis)) / (np.nanstd(dataset, axis=axis))
+
+
+def rank_data(data, axis=0):
+    data_rk = st.rankdata(
+        data, axis=axis)
+    if type(data) == xr.DataArray:
+        print('Repack as xr.DataArray')
+        data_rk = xr.DataArray(
+            data=data_rk,
+            dims=data.dims,
+            coords=data.coords,
+            name=data.name,
+        )
+    return data_rk
+
+
+def get_LR_map(ds, var, method='standardize', sids=None, deg=1):
+    if sids is None:
+        sids = ds.indices_flat
+
+    pids = ds.get_points_for_idx(sids)
+
+    arr = np.zeros((len(sids), ds.mask.shape[0]))
+    if method == 'standardize':
+        y_data = standardize(ds.ds[var])
+    elif method == 'normalize':
+        y_data = normalize(ds.ds[var])
+    elif method == 'rank':
+        y_data = rank_data(ds.ds[var])
+    else:
+        print('No Normalization on time series performed!')
+        y_data = ds.ds[var]
+    for idx, pid in enumerate((pids)):
+        ts = y_data.sel(points=pid)
+        poly_coeff = np.polyfit(
+            x=ts, y=y_data, full=False, deg=deg)
+        arr[idx, :], _ = poly_coeff
+
+    da_LR = xr.DataArray(
+        data=arr,
+        dims=['sids', 'points'],
+        coords=dict(
+            sids=sids,
+            points=ds.ds.points,
+            lon=ds.ds.lon,
+            lat=ds.ds.lat,
+        ),
+        name='LR'
+    )
+
+    return da_LR
