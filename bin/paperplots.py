@@ -18,7 +18,9 @@ from climnet.network import clim_networkx
 import climnet.plots as cplt
 import climnet.utils.spatial_utils as sputils
 import utils as ut
+
 PATH = os.path.dirname(os.path.abspath(__file__))
+# plt.style.use('paperplot.mplstyle')
 
 
 def make_argparser():
@@ -67,12 +69,15 @@ enso_dict = ut.get_enso_years(nino_indices, month_range=[12, 2],
 # %%
 # Load EP, CP, standard network
 nino_networks = [
+    {'name': 'standard',
+     'title': 'Normal',
+     'file': args.normalNetwork},
     {'name': 'Nino_EP',
+     'title': 'EP',
      'file': args.epNetwork},
     {'name': 'Nino_CP',
+     'title': 'CP',
      'file': args.cpNetwork},
-    {'name': 'standard',
-     'file': args.normalNetwork},
 ]
 for net in nino_networks:
     # naming of net files
@@ -148,7 +153,6 @@ cmaps = ['Reds', 'Blues']
 mrks = ['o', 'x']
 colors = ['r', 'b']
 labels = ['All', f'q>{q_vals[1]}', f'q<{q_vals[2]}']
-titles = ['Normal years', 'EP years', 'CP years']
 for idx, nino in enumerate(nino_networks):
     axs = axes[idx]
     cnx = nino['cnx']
@@ -218,7 +222,7 @@ for idx, nino in enumerate(nino_networks):
                    loc='upper right',
                    color_arr=['k', 'tab:red', 'tab:blue'],
                    yticks=yticks,
-                   title=titles[idx],
+                   title=nino['title'],
                    sci=3)
 
 cplt.enumerate_subplots(axes.T, pos_x=-0.1, pos_y=1.07)
@@ -234,39 +238,39 @@ net_measures = {
                       vmax=.6,
                       vmin_zonal=.42,
                       vmax_zonal=.55,
-                      cmap='Reds', label=r"$F_i > Q_F(0.9)$"),
+                      cmap='Reds', label=r"$\tilde{f}_i^+$"),
                  dict(var='formanCurvature_norm_q0.1',
                       vmin=-.25,
                       vmax=-.07,
                       vmin_zonal=None,
                       vmax_zonal=.0,
-                      cmap='Blues_r', label=r"$F_i < Q_F(0.1)$"),
+                      cmap='Blues_r', label=r"$\tilde{f}_i^-$"),
                  ],
     'Nino_EP': [dict(var='formanCurvature_norm_q0.9',
                      vmin=.23,
                      vmax=.37,
                      vmin_zonal=None,
                      vmax_zonal=None,
-                     cmap='Reds', label=r"$F_i > Q_F(0.9)$"),
+                     cmap='Reds', label=r"$\tilde{f}_i^+$"),
                 dict(var='formanCurvature_norm_q0.1',
                      vmin=-.5,
                      vmax=-.4,
                      vmin_zonal=None,
                      vmax_zonal=None,
-                     cmap='Blues_r', label=r"$F_i < Q_F(0.1)$"),
+                     cmap='Blues_r', label=r"$\tilde{f}_i^-$"),
                 ],
     'Nino_CP': [dict(var='formanCurvature_norm_q0.9',
                      vmin=.53,
                      vmax=.63,
                      vmin_zonal=None,
                      vmax_zonal=None,
-                     cmap='Reds', label=r"$F_i > Q_F(0.9)$"),
+                     cmap='Reds', label=r"$\tilde{f}_i^+$"),
                 dict(var='formanCurvature_norm_q0.1',
                      vmin=-.26,
                      vmax=-.16,
                      vmin_zonal=-.3,
                      vmax_zonal=None,
-                     cmap='Blues_r', label=r"$F_i < Q_F(0.1)$"),
+                     cmap='Blues_r', label=r"$\tilde{f}_i^-$"),
                 ],
 }
 
@@ -277,12 +281,11 @@ gs = gridspec.GridSpec(3, len(net_measures),
                        hspace=0.3, wspace=0.3)
 axs = []
 clrs = ['darkred', 'darkblue']
-titles = ['Normal', 'EP', 'CP']
 for j, nino in enumerate(nino_networks):
     net_measure = net_measures[nino['name']]
     axlat1 = fig.add_subplot(gs[-1, j])
     axlat1 = cplt.prepare_axis(axlat1,
-                               xlabel=r'zonal mean',
+                               xlabel=r'zonal median',
                                ylabel='latitude',
                                xlabel_pos='right',
                                )
@@ -296,11 +299,11 @@ for j, nino in enumerate(nino_networks):
         cplt.plot_map(ds, nino['cnx'].ds_nx[m['var']],
                       ax=axmap,
                       plot_type='contourf',
-                      cmap=m['cmap'], label=m['label'],
+                      cmap=m['cmap'], label=f"node curvature {m['label']}",
                       projection='EqualEarth',
                       plt_grid=True,
                       significant_mask=True,
-                      levels=10,
+                      levels=8,
                       tick_step=2,
                       vmin=m['vmin'],
                       vmax=m['vmax'],
@@ -318,7 +321,7 @@ for j, nino in enumerate(nino_networks):
         )
         if i == 0:
             da = xr.where(~np.isnan(da), da, da.min())
-            axmap.set_title(titles[j])
+            axmap.set_title(nino['title'])
         else:
             da = xr.where(~np.isnan(da), da, da.max())
         zonal_mean = sputils.compute_meridional_quantile(da, q=0.5)
@@ -682,7 +685,6 @@ gs = gridspec.GridSpec(4, len(net_measures),
                        hspace=0.35, wspace=0.3)
 axs = []
 clrs = ['darkred', 'darkblue']
-titles = ['Normal', 'EP', 'CP']
 for j, nino in enumerate(nino_networks):
     net_measure = net_measures[nino['name']]
     axlat1 = fig.add_subplot(gs[2, j])
@@ -725,7 +727,7 @@ for j, nino in enumerate(nino_networks):
         )
         if i == 0:
             da = xr.where(~np.isnan(da), da, da.min())
-            axmap.set_title(titles[j])
+            axmap.set_title(nino['title'])
         else:
             da = xr.where(~np.isnan(da), da, da.max())
         zonal_mean = sputils.compute_meridional_quantile(da, q=0.5)
