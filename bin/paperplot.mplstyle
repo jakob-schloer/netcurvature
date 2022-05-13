@@ -766,6 +766,7 @@ axes.titlesize:     14   # fontsize of the axes title
 axes.labelsize:     12
 xtick.labelsize:    12
 ytick.labelsize:    12
+axes.grid:          False   # display grid or not
 
 font.size:          12.0
 text.usetex:        False  # use latex for all text handling. The following fonts
@@ -776,3 +777,5 @@ legend.frameon:     False     # if True, draw the legend on a background patch
 legend.framealpha:  0.8       # legend patch transparency
 
 savefig.bbox:       tight    # {tight, standard}
+
+pcolor.shading :    auto
